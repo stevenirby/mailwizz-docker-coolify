@@ -1,0 +1,44 @@
+version: '3.1'
+
+services:
+  # Probably useless, but it's here just in case
+  # https://www.mailwizz.com/kb/using-redis-cache-mutexes/
+  mailwizz-redis:
+    image: redis:latest
+    container_name: mailwizz-redis
+    ports:
+      - "6379:6379"
+
+  mailwizz-mysql:
+    image: mysql:latest
+    container_name: mailwizz-mysql
+    volumes:
+      - ./data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=mailwizz
+      - MYSQL_USER=mailwizz
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_PORT=3306
+      - MYSQL_HOST=127.0.0.1
+
+  mailwizz-php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CACHEBUST: ${TIMESTAMP:-1}
+    container_name: mailwizz-php
+    links:
+      - mailwizz-mysql
+      - mailwizz-redis
+    environment:
+      PHP_php5enmod: 'bcmath gd gmp intl ldap mbstring mysqli pcntl pdo_mysql zip'
+      PHP__post_max_size:  '128M'
+      PHP__upload_max_filesize:  '128M'
+      PHP__memory_limit:  '128M'
+    expose:
+      - "9000"
+      - "80"
+    cap_add:
+      - NET_BIND_SERVICE
